@@ -16,10 +16,13 @@ services:
       retries: 5
 
   web:
-    build: .
+    build: 
+      context: ./backend  # <--- MUDANÇA: O contexto de build agora é a pasta backend
+      dockerfile: Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - .:/app
+      - ./backend:/app          # Mapeia o código Python
+      - ./frontend:/frontend    # <--- TRUQUE: Mapeia o frontend externo para dentro do container temporariamente
     ports:
       - "8000:8000"
     environment:

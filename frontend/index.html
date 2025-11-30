@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atibaia Geo-Insights</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* Estilo do Painel de Legenda */
+        .info {
+            padding: 10px;
+            background: white;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // 1. Inicializa o mapa focado em Atibaia
+    const map = L.map('map').setView([-23.12, -46.56], 14);
+
+    // 2. Mapa base (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 3. Define as cores baseadas na população (Choropleth Logic)
+    function getColor(d) {
+        return d > 3000 ? '#800026' :
+               d > 2000 ? '#BD0026' :
+               d > 1000 ? '#E31A1C' :
+               d > 500  ? '#FC4E2A' :
+               d > 200  ? '#FD8D3C' :
+               d > 100  ? '#FEB24C' :
+               d > 50   ? '#FED976' :
+                          '#FFEDA0';
+    }
+
+    // 4. Estilo de cada polígono
+    function style(feature) {
+        return {
+            fillColor: getColor(feature.properties.population),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7
+        };
+    }
+
+    // 5. Interação (Popup ao clicar)
+    function onEachFeature(feature, layer) {
+        if (feature.properties) {
+            layer.bindPopup(`
+                <h3>Setor: ${feature.properties.code}</h3>
+                <p><b>População:</b> ${feature.properties.population} habitantes</p>
+            `);
+        }
+    }
+
+    // 6. Consome nossa API e renderiza
+    fetch('/map')
+        .then(res => res.json())
+        .then(data => {
+            // Adiciona a camada GeoJSON ao mapa
+            L.geoJSON(data, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+        })
+        .catch(err => console.error("Erro ao carregar dados:", err));
+
+</script>
+
+</body>
+</html>
