@@ -1,10 +1,11 @@
 # app/repositories/census_repository.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, text
 from sqlalchemy.dialects.postgresql import insert
 from app.models.census import CensusTract
 import geopandas as gpd
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -58,3 +59,30 @@ class CensusRepository:
         """Busca todos os setores para exibir na API."""
         result = await self.db.execute(select(CensusTract))
         return result.scalars().all()
+
+    async def get_all_features(self):
+        """
+        Retorna todos os setores formatados como GeoJSON.
+        Usa ST_AsGeoJSON do PostGIS para máxima performance.
+        """
+        stmt = select(
+            CensusTract.code,
+            CensusTract.population,
+            func.ST_AsGeoJSON(CensusTract.geom).label("geometry_json")
+        )
+        
+        result = await self.db.execute(stmt)
+        rows = result.all()
+        
+        features = []
+        for row in rows:
+            features.append({
+                "type": "Feature",
+                "geometry": json.loads(row.geometry_json), # Converte string JSON do banco para dict
+                "properties": {
+                    "code": row.code,
+                    "population": row.population
+                }
+            })
+            
+        return features

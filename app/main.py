@@ -1,10 +1,12 @@
 # app/main.py
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response, Depends
-from sqlalchemy.ext.asyncio import AsyncSession # Novo
-from app.core.database import get_db # Novo (Injeção de dependência)
+from sqlalchemy.ext.asyncio import AsyncSession 
+from app.core.database import get_db 
 from app.core.init_db import init_tables
 from app.services.ibge.orchestrator import IbgeEtlOrchestrator
+from app.repositories.census_repository import CensusRepository
+from app.schemas.geo import FeatureCollection
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,3 +35,15 @@ async def sync_etl(db: AsyncSession = Depends(get_db)):
     orchestrator = IbgeEtlOrchestrator(db=db)
     result = await orchestrator.sync_database()
     return result
+
+# NOVA ROTA: Consome do Banco de Dados
+@app.get("/map", response_model=FeatureCollection)
+async def get_map_data(db: AsyncSession = Depends(get_db)):
+    """
+    Endpoint de Consumo (Frontend).
+    Retorna o GeoJSON persistido no Banco de Dados.
+    """
+    repo = CensusRepository(db)
+    features = await repo.get_all_features()
+    
+    return {"type": "FeatureCollection", "features": features}
